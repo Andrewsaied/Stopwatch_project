@@ -1,0 +1,9 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <avr/io.h>
+#include <avr/interrupt.h>
+
+void timer_CTC(void)
+{
+	TCCR1A= (1<<COM1A1);
+}

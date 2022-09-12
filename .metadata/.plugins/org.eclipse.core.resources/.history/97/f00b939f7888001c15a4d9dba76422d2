@@ -1,0 +1,224 @@
+/*
+ * main.c
+ *
+ *  Created on: Feb 3, 2022
+ *      Author: Andrew
+ *      dis:Stopwatch
+ */
+
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <util/delay.h>
+
+/*
+ * making hash defines for quick use
+ */
+#ifndef _BIT_MATHS_H											//guard for the code
+#define _BIT_MATHS_H
+
+#define SET_BIT(var,bit_num)	var=var|(1<<bit_num)			//set the bit to specific register
+
+#define CLR_BIT(var,bit_num)	var=var& ~(1<<bit_num)			//clear the bit to specific register
+
+#define TOGGLE_BIT(var,bit_num)	var=var^(1<<bit_num)			//toggle the bit to specific register
+
+#define GET_BIT(var,bit_num)	(var>>bit_num)&1				//get the bit to specific register
+
+#endif
+
+/*
+ * making global variable
+ */
+unsigned char Seconds=0;//variable for conunt second
+unsigned char Minutes=0;//variable for conunt Minutes
+unsigned char Hours=0;//variable for conunt Hours
+
+
+
+/*
+ * Function name: 	ISR
+ * description: 	it resets the values for the stopwatch when the button is pressed
+ * output:			seconds set to 0
+ * 					minutes set to 0
+ * 					hours set to 0
+ */
+ISR(INT0_vect)
+{
+	//Reset all values
+	Seconds=0;
+	Minutes=0;
+	Hours=0;
+}
+
+/*
+ description: External INT0 enable set external interrupt INT0 with falling edge with internal pull-up resistor
+ 	 	 	  if a falling edge detected the Stop Watch time should be reset.
+ *
+ * Connect a push button with the internal pull-up resistor.
+ * If a falling edge detected the Stop Watch time should be reset.
+*/
+void INT0_Init(void)
+{
+	CLR_BIT(DDRD,2);// as input pin
+	SET_BIT(PORTD,2);// config pull-up resistor
+	SET_BIT(GICR,6);//enable INT_0
+	SET_BIT(MCUCR,1);//config INT_0 as falling edge
+	CLR_BIT(MCUCR,0);//config INT_0 as falling edge
+
+
+}
+/**********************************************END_EXTARNAL_INTERRUPT_0*****************************************************************/
+
+
+
+
+
+
+
+/**********************************EXTARNAL_INTERRUPT_1*********************************************************************************/
+/* External INT1 Interrupt Service Routine */
+ISR(INT1_vect)
+{
+	//Turn off Timer clock
+	CLR_BIT(TCCR1B,0);
+	CLR_BIT(TCCR1B,1);
+	CLR_BIT(TCCR1B,2);
+
+}
+
+/* External INT1 enable
+ * Configure External Interrupt INT1 with raising edge.
+ * Connect a push button with the external pull-down resistor.
+ * If a raising edge detected the Stop Watch time should be paused.
+ */
+void INT1_Init(void)
+{
+	CLR_BIT(DDRD,3);// as input pin
+	SET_BIT(GICR,7);//enable INT_1
+	SET_BIT(MCUCR,2);//config INT_1 as raising edge
+	SET_BIT(MCUCR,3);//config INT_1 as raising edge
+
+
+}
+/**********************************************END_EXTARNAL_INTERRUPT_1*****************************************************************/
+
+
+
+
+
+
+
+
+
+
+/**********************************EXTARNAL_INTERRUPT_2*********************************************************************************/
+/* External INT2 Interrupt Service Routine */
+ISR(INT2_vect)
+{
+	//Turn on Timer clock
+	SET_BIT(TCCR1B,0);
+	CLR_BIT(TCCR1B,1);
+	SET_BIT(TCCR1B,2);
+}
+
+/* External INT2 enable
+ *Configure External Interrupt INT2 with falling edge.
+ *Connect a push button with the internal pull-up resistor.
+ * If a falling edge detected the Stop Watch time should be resumed.
+ */
+void INT2_Init(void)
+{
+	CLR_BIT(DDRB,2);// as input pin
+	SET_BIT(PORTB,2);// config pull-up resistor
+	SET_BIT(GICR,5);//enable INT_2
+	CLR_BIT(MCUCSR,0);//config INT_2 as falling edge
+
+}
+/**********************************************END_EXTARNAL_INTERRUPT_2*****************************************************************/
+
+
+
+
+
+
+
+
+/*****************************TIMER_1**************************************************************************************/
+ISR(TIMER1_COMPA_vect){
+	Seconds++;
+	if(Seconds==60){
+		Minutes++;
+		Seconds=0;
+	}
+	if(Minutes==60){
+		Hours++;
+		Minutes=0;
+	}
+	if(Hours==24){
+		Hours=0;
+	}
+
+}
+void Timer1_CTC_Init(void)
+{
+	TCNT1=0;//intial value
+	SET_BIT(TCCR1A,3);
+	SET_BIT(TCCR1B,3);//presceller 1024
+	SET_BIT(TCCR1B,0);
+	SET_BIT(TCCR1B,1);
+	OCR1A=1000;//Top Value
+	SET_BIT(TIMSK,4);//Output Compare A Match Interrupt Enable
+
+}
+/*********************************END_TIMER_1**********************************************************************************/
+
+
+
+
+
+
+/******************************************MAIN*************************************************************************/
+int main (void)
+{
+	Timer1_CTC_Init();
+	INT0_Init();
+	INT1_Init();
+	INT2_Init();
+	SET_BIT(SREG,7);//enable global interrupts
+	DDRA|=0x3F; //PA0-5 output for 7 segments enable
+	DDRC|=0x0F; //PC0-3 output for 7 segments
+	PORTC=0x00;
+
+
+	while(1){
+		//Using % and / enabled me to use 3 variables instead of 6, where 1 for each 7 segments
+		//Display seconds first by enabling 5th then 4th 7 segments
+		PORTA=(1<<5);
+		PORTC=Seconds%10; // take units of the number
+		_delay_ms(3);
+
+		PORTA=(1<<4);
+		PORTC=Seconds/10 ; //take tenth of the number
+		_delay_ms(3);
+
+		PORTA=(1<<3);
+		PORTC=Minutes%10 ; //take units of the number
+		_delay_ms(3);
+
+		PORTA=(1<<2);
+		PORTC=Minutes/10 ; //take tenth of the number
+		_delay_ms(3);
+
+		PORTA=(1<<1);
+		PORTC=Hours%10 ; //take units of the number
+		_delay_ms(3);
+
+		PORTA=(1<<0);
+		PORTC=Hours/10 ; //take tenth of the number
+		_delay_ms(3);
+
+	}
+
+	return 0;
+}
+/*********************************************END_MAIN**********************************************************************/

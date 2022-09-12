@@ -1,0 +1,81 @@
+/*
+ ============================================================================
+ Name        : Stopwatch.c
+ Author      : 
+ Version     :
+ Copyright   : Your copyright notice
+ Description : Hello World in C, Ansi-style
+ ============================================================================
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <avr/io.h>
+#include <avr/interrupt.h>
+
+#ifndef _BIT_MATHS_H
+# define _BIT_MATHS_H
+#define SET_BIT(var,bit_num)    var=var|(1<<bit_num)
+
+#define CLR_BIT(var,bit_num)    var=var& ~(1<<bit_num)
+
+#define TOGGLE_BIT(var,bit_num)    var=var^(1<<bit_num)
+
+#define GET_BIT(var,bit_num)    (var>>bit_num)&1
+
+#endif
+
+
+
+void INT0_Init(void)
+{
+	CLR_BIT(DDRD,2);			//as input pin
+	SET_BIT(PORTD,2);			//config pull-up resistor
+	SET_BIT(GICR,6);			//enable INT_0
+	SET_BIT(MCUCR,1);			//config INT_0 as falling edge
+	CLR_BIT(MCUCR,0);			//config INT_0 as falling edge
+	SET_BIT(SREG,7);			//Global Interrupt Enable
+
+}
+
+void INT1_Init(void)
+{
+	CLR_BIT(DDRD,3);			//as input pin
+	SET_BIT(GICR,7);			//enable INT_0
+	SET_BIT(MCUCR,2);			//config INT_0 as falling edge
+	CLR_BIT(MCUCR,3);			//config INT_0 as falling edge
+	SET_BIT(SREG,7);			//Global Interrupt Enable
+
+
+}
+
+void INT2_Init(void)
+{
+	CLR_BIT(DDRD,2);			//as input pin
+	SET_BIT(PORTB,2);			//config pull-up resistor
+	SET_BIT(GICR,5);			//enable INT_0
+	SET_BIT(MCUCR,1);			//config INT_0 as falling edge
+	CLR_BIT(MCUCSR,0);			//config INT_0 as falling edge
+	SET_BIT(SREG,7);			//Global Interrupt Enable
+
+}
+
+void timer_CTC(void)
+{
+	SET_BIT(TCCR1A,7);		//clear ctc
+	CLR_BIT(TCCR1A,6);
+	SET_BIT(TCCR1B,3);
+	SET_BIT(TCCR1B,2);		//prescalar 1024
+	SET_BIT(TCCR1B,0);		//prescalar 1024
+	TCNT1=0;				//inital value
+	OCR1A=1;				//top value
+	SET_BIT(SREG,7);		//Global Interrupt Enable
+	SET_BIT(TIMSK,4);
+
+}
+
+
+int main(void) {
+
+
+}
